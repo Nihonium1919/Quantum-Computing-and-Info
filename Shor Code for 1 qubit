@@ -1,0 +1,113 @@
+# Import necessary libraries
+print('\nShor Code')
+print('--------------')
+
+from qiskit import QuantumRegister, ClassicalRegister, QuantumCircuit, transpile
+from qiskit_aer import Aer
+from qiskit.visualization import plot_histogram
+import matplotlib.pyplot as plt
+
+# Use the qasm simulator backend from Qiskit Aer
+backend = Aer.get_backend('qasm_simulator')
+
+# Initialize the first quantum register and classical register
+q = QuantumRegister(1, 'q')
+c = ClassicalRegister(1, 'c')
+circuit = QuantumCircuit(q, c)
+
+# Step 1: Create a simple quantum circuit and apply bit and phase flip errors
+circuit.h(q[0])  # Apply Hadamard gate
+
+# Simulating bit flip and phase flip errors
+circuit.x(q[0])  # Bit flip error
+circuit.z(q[0])  # Phase flip error
+
+circuit.h(q[0])  # Apply Hadamard gate again
+circuit.barrier(q)  # Add a barrier
+circuit.measure(q[0], c[0])  # Measure the qubit
+
+# Transpile the circuit for optimization
+transpiled_circuit = transpile(circuit, backend)
+
+# Draw the initial circuit
+circuit.draw(output='mpl', filename='initial_circuit.png')  # Save the circuit as an image
+
+# Execute the circuit on the simulator
+result = backend.run(transpiled_circuit, shots=1000).result()  # Run the simulation
+counts = result.get_counts(transpiled_circuit)
+
+print("\nUncorrected bit flip and phase error")
+print("--------------------------------------")
+print(counts)
+
+# Shor's code starts here
+q = QuantumRegister(9, 'q')
+c = ClassicalRegister(1, 'c')
+circuit = QuantumCircuit(q, c)
+
+# Prepare the initial state
+circuit.cx(q[0], q[3])
+circuit.cx(q[0], q[6])
+circuit.h(q[0])
+circuit.h(q[3])
+circuit.h(q[6])
+
+# Encode the information
+circuit.cx(q[0], q[1])
+circuit.cx(q[3], q[4])
+circuit.cx(q[6], q[7])
+circuit.cx(q[0], q[2])
+circuit.cx(q[3], q[5])
+circuit.cx(q[6], q[8])
+
+circuit.barrier(q)  # Add a barrier
+
+# Simulating bit flip and phase flip errors
+circuit.x(q[0])  # Bit flip error
+circuit.z(q[0])  # Phase flip error
+
+circuit.barrier(q)  # Add another barrier
+
+# Decode the information
+circuit.cx(q[0], q[1])
+circuit.cx(q[3], q[4])
+circuit.cx(q[6], q[7])
+circuit.cx(q[0], q[2])
+circuit.cx(q[3], q[5])
+circuit.cx(q[6], q[8])
+
+# Perform majority voting for error correction
+circuit.ccx(q[1], q[2], q[0])
+circuit.ccx(q[4], q[5], q[3])
+circuit.ccx(q[8], q[7], q[6])
+
+# Apply Hadamard gates to the ancilla qubits
+circuit.h(q[0])
+circuit.h(q[3])
+circuit.h(q[6])
+
+# Perform final correction steps
+circuit.cx(q[0], q[3])
+circuit.cx(q[0], q[6])
+circuit.ccx(q[6], q[3], q[0])
+
+circuit.barrier(q)  # Add a barrier before measurement
+circuit.measure(q[0], c[0])  # Measure the first qubit
+
+# Transpile the Shor code circuit for optimization
+transpiled_shor_circuit = transpile(circuit, backend)
+
+# Draw the Shor code circuit
+circuit.draw(output='mpl', filename='shor_code_circuit.png')  # Save the circuit as an image
+
+# Execute the Shor code circuit on the simulator
+result = backend.run(transpiled_shor_circuit, shots=1000).result()  # Run the simulation
+counts = result.get_counts(transpiled_shor_circuit)
+
+print("\nShor code with bit flip and phase error")
+print("----------------------------------------")
+print(counts)
+
+# Optionally, plot the results
+plot_histogram(counts)
+plt.show()
